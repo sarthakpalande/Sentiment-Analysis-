@@ -1,0 +1,44 @@
+import pandas as pd
+import numpy as np
+import joblib
+import nltk
+
+df = pd.read_csv('sample.csv')
+df = df[:80000]
+import string
+import re
+def pos(text):
+        #nopunc_text =   [t for t in text if t not in string.punctuation]
+        #joint = ''.join(nopunc_text)
+        #sentences = [t.lower() for t in text if re.match('^[a-zA-Z]+', t)] 
+        tokenize_text = nltk.word_tokenize(text)
+        sentences = [t.lower() for t in tokenize_text if re.match('^[a-zA-Z]+', t)]
+        pos_text = nltk.pos_tag(sentences)
+        required_text = [pos for (pos,tag) in pos_text if tag  in ['RB','JJ']]
+        joined_required_text = ' '.join(required_text)
+        return joined_required_text
+
+df['Reviews'] = df['Reviews'].apply(str)
+df['Required'] = df['Reviews'].apply(pos)
+X_train = df.loc[:60000, 'Required'].values
+y_train = df.loc[:60000, 'Rating'].values
+X_test = df.loc[60000:, 'Required'].values
+y_test = df.loc[60000:, 'Rating'].values
+from sklearn.feature_extraction.text import TfidfVectorizer
+vectorizer = TfidfVectorizer(sublinear_tf=True, encoding='utf-8',
+ decode_error='ignore')
+vectorizer.fit(X_train)
+X_train=vectorizer.transform(X_train)
+X_test=vectorizer.transform(X_test)
+
+from sklearn import svm
+model= svm.LinearSVC()
+model.fit(X_train,y_train)
+print("Score on training data is: "+str(model.score(X_train,y_train)))
+print("Score on testing data is: "+str(model.score(X_test,y_test)))
+
+model.predict(X_test[48])
+
+import joblib
+joblib.dump(model,'model.pkl')
+joblib.dump(vectorizer,'vectorizer.pkl')
